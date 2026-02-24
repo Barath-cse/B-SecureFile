@@ -58,18 +58,23 @@ B-SecureFile/
 
 ### 1. Install Dependencies
 
-#### Frontend
-```bash
-cd frontend
-npm install
-```
-
-#### Backend
-```bash
-cd backend
-npm install
-```
-
+> ⚠️ **Optional: gas-free mode**
+> 
+> The app can run exactly like the older version, without requiring a connected wallet or spending any ETH. To enable this mode, open `frontend/src/App.js` and set `BLOCKCHAIN_ENABLED = false` (it's already false by default). The upload flow will still encrypt and hash files, and the backend will store metadata locally.
+>
+> 
+>#### Frontend
+>```bash
+>cd frontend
+>npm install
+>```
+>
+>#### Backend
+>```bash
+>cd backend
+>npm install
+>```
+>
 ### 2. Configure Blockchain
 
 **Option A: Local Blockchain (Ganache)**
@@ -114,8 +119,10 @@ npm start
 ```
 
 ## 🔐 How It Works
+*When running with `BLOCKCHAIN_ENABLED = false`, steps involving the blockchain are skipped; hashes are maintained in the backend only.*
 
 ### File Upload
+
 1. User connects wallet (MetaMask)
 2. Selects file to upload
 3. Frontend encrypts file with AES-256
@@ -125,6 +132,7 @@ npm start
 7. Stores file metadata in backend
 
 ### File Verification
+
 1. User downloads file
 2. Frontend decrypts file with AES-256
 3. Recalculates SHA-256 hash

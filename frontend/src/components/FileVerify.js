@@ -117,11 +117,10 @@ function FileVerify({ userAddress }) {
           <input
             type="text"
             id="blockchainHash"
+            placeholder="0x..."
+            className="input-field"
             value={blockchainHash}
             onChange={(e) => setBlockchainHash(e.target.value)}
-            placeholder="0x..."
-            disabled={loading}
-            className="input-field"
           />
         </div>
 
@@ -130,11 +129,10 @@ function FileVerify({ userAddress }) {
           <input
             type="text"
             id="encryptionKey"
+            placeholder="Enter encryption key if you need to decrypt"
+            className="input-field"
             value={encryptionKey}
             onChange={(e) => setEncryptionKey(e.target.value)}
-            placeholder="Enter encryption key if you need to decrypt"
-            disabled={loading}
-            className="input-field"
           />
         </div>
 

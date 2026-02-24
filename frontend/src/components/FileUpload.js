@@ -3,7 +3,9 @@ import { encryptFile, calculateHash } from '../utils/crypto';
 import axios from 'axios';
 import '../styles/FileUpload.css';
 
-function FileUpload({ userAddress }) {
+function FileUpload({ userAddress, provider, contract }) {
+  // when blockchain is disabled the parent may not pass contract/provider
+  const useBlockchain = contract && provider;
   const [file, setFile] = useState(null);
   const [fileName, setFileName] = useState('');
   const [loading, setLoading] = useState(false);
@@ -35,6 +37,7 @@ function FileUpload({ userAddress }) {
       // Step 1: Calculate file hash before encryption
       const originalHash = await calculateHash(file);
       console.log('Original Hash:', originalHash);
+      setMessage(`Hash calculated: ${originalHash.slice(0, 10)}...`);
 
       // Step 2: Encrypt file
       setMessage('Encrypting file...');
@@ -60,21 +63,22 @@ function FileUpload({ userAddress }) {
           setUploadProgress(progress);
         }
       });
+      console.log('Backend upload response:', response.data);
 
-      // Step 5: Store hash on blockchain (ideally)
-      setMessage(`✅ File uploaded successfully!\nFile Hash: ${originalHash}\nEncryption Key: ${encryptedData.key}`);
+      // File hash and encryption key are stored in backend
+      // Access control (grant/revoke) can be managed separately without uploading every file to blockchain
+      setMessage(`✅ File uploaded successfully!\nHash: ${originalHash}\nKey: ${encryptedData.key}`);
       setMessageType('success');
-      
-      console.log('Upload response:', response.data);
 
       // Reset form
       setFile(null);
       setFileName('');
       setUploadProgress(0);
     } catch (err) {
-      setMessage(`Error: ${err.message}`);
+      const errorMsg = err.message || err.toString();
+      console.error('Upload error:', err);
+      setMessage(`❌ Error: ${errorMsg}`);
       setMessageType('error');
-      console.error(err);
     } finally {
       setLoading(false);
     }

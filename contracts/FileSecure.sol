@@ -1,182 +1,54 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-/**
- * @title FileSecure
- * @dev Blockchain-based file integrity and access control system
- */
 contract FileSecure {
-    // File struct to store file metadata
-    struct FileRecord {
-        string fileHash;        // SHA-256 hash of the file
-        address owner;          // Original uploader
-        uint256 timestamp;      // Upload timestamp
-        bool exists;            // Whether file is registered
+    struct File {
+        string hash;
+        address owner;
     }
 
-    // Mapping: fileHash => FileRecord
-    mapping(string => FileRecord) public files;
+    uint public fileCount;
+    mapping(uint => File) public files;
+    mapping(uint => mapping(address => bool)) public access;
 
-    // Mapping: fileHash => list of addresses with access
-    mapping(string => mapping(address => bool)) public accessControl;
+    event FileUploaded(uint indexed fileId, string hash, address indexed owner);
+    event AccessGranted(uint indexed fileId, address indexed user);
 
-    // Mapping: fileHash => list of all addresses with access
-    mapping(string => address[]) public accessList;
-
-    // Events
-    event FileUploaded(
-        string indexed fileHash,
-        address indexed owner,
-        uint256 timestamp
-    );
-
-    event AccessGranted(
-        string indexed fileHash,
-        address indexed grantedTo,
-        address indexed grantedBy
-    );
-
-    event AccessRevoked(
-        string indexed fileHash,
-        address indexed revokedFrom,
-        address indexed revokedBy
-    );
-
-    /**
-     * @dev Upload a file hash to the blockchain
-     * @param _fileHash SHA-256 hash of the file
-     */
-    function uploadFile(string memory _fileHash) public {
-        require(bytes(_fileHash).length > 0, "File hash cannot be empty");
-        require(!files[_fileHash].exists, "File already registered");
-
-        files[_fileHash] = FileRecord({
-            fileHash: _fileHash,
-            owner: msg.sender,
-            timestamp: block.timestamp,
-            exists: true
-        });
-
-        // Owner has automatic access
-        accessControl[_fileHash][msg.sender] = true;
-        accessList[_fileHash].push(msg.sender);
-
-        emit FileUploaded(_fileHash, msg.sender, block.timestamp);
+    function uploadFile(string calldata _hash) external {
+        fileCount++;
+        files[fileCount] = File(_hash, msg.sender);
+        emit FileUploaded(fileCount, _hash, msg.sender);
     }
 
-    /**
-     * @dev Verify if a file exists on blockchain
-     * @param _fileHash SHA-256 hash to verify
-     * @return bool True if file exists
-     */
-    function verifyFile(string memory _fileHash) public view returns (bool) {
-        return files[_fileHash].exists;
+    function verifyFile(string calldata _hash) external view returns (bool) {
+        for (uint i = 1; i <= fileCount; i++) {
+            if (
+                keccak256(bytes(files[i].hash)) == keccak256(bytes(_hash))
+            ) return true;
+        }
+        return false;
     }
 
-    /**
-     * @dev Get file details
-     * @param _fileHash SHA-256 hash of the file
-     * @return fileHash The file hash
-     * @return owner The file owner
-     * @return timestamp Upload timestamp
-     */
-    function getFileDetails(string memory _fileHash)
-        public
-        view
-        returns (
-            string memory fileHash,
-            address owner,
-            uint256 timestamp
-        )
-    {
-        require(files[_fileHash].exists, "File does not exist");
-
-        FileRecord memory record = files[_fileHash];
-        return (record.fileHash, record.owner, record.timestamp);
+    function grantAccess(uint fileId, address user) external {
+        require(msg.sender == files[fileId].owner, "Not owner");
+        access[fileId][user] = true;
+        emit AccessGranted(fileId, user);
     }
 
-    /**
-     * @dev Grant access to a file
-     * @param _fileHash SHA-256 hash of the file
-     * @param _userAddress Address to grant access to
-     */
-    function grantAccess(string memory _fileHash, address _userAddress)
-        public
-    {
-        require(files[_fileHash].exists, "File does not exist");
-        require(files[_fileHash].owner == msg.sender, "Only file owner can grant access");
-        require(_userAddress != address(0), "Invalid address");
-        require(
-            !accessControl[_fileHash][_userAddress],
-            "User already has access"
-        );
-
-        accessControl[_fileHash][_userAddress] = true;
-        accessList[_fileHash].push(_userAddress);
-
-        emit AccessGranted(_fileHash, _userAddress, msg.sender);
-    }
-
-    /**
-     * @dev Revoke access to a file
-     * @param _fileHash SHA-256 hash of the file
-     * @param _userAddress Address to revoke access from
-     */
-    function revokeAccess(string memory _fileHash, address _userAddress)
-        public
-    {
-        require(files[_fileHash].exists, "File does not exist");
-        require(files[_fileHash].owner == msg.sender, "Only file owner can revoke access");
-        require(
-            accessControl[_fileHash][_userAddress],
-            "User does not have access"
-        );
-
-        accessControl[_fileHash][_userAddress] = false;
-
-        emit AccessRevoked(_fileHash, _userAddress, msg.sender);
-    }
-
-    /**
-     * @dev Check if user has access to a file
-     * @param _fileHash SHA-256 hash of the file
-     * @param _userAddress Address to check
-     * @return bool True if user has access
-     */
-    function hasAccess(string memory _fileHash, address _userAddress)
-        public
+    function hasAccess(uint fileId, address user)
+        external
         view
         returns (bool)
     {
-        require(files[_fileHash].exists, "File does not exist");
-        return accessControl[_fileHash][_userAddress];
+        return access[fileId][user];
     }
 
-    /**
-     * @dev Get list of addresses with access to a file
-     * @param _fileHash SHA-256 hash of the file
-     * @return address[] Array of addresses with access
-     */
-    function getAccessList(string memory _fileHash)
-        public
+    function getFileDetails(uint fileId)
+        external
         view
-        returns (address[] memory)
+        returns (string memory, address)
     {
-        require(files[_fileHash].exists, "File does not exist");
-        return accessList[_fileHash];
-    }
-
-    /**
-     * @dev Get number of people with access to a file
-     * @param _fileHash SHA-256 hash of the file
-     * @return uint256 Number of people with access
-     */
-    function getAccessCount(string memory _fileHash)
-        public
-        view
-        returns (uint256)
-    {
-        require(files[_fileHash].exists, "File does not exist");
-        return accessList[_fileHash].length;
+        File memory f = files[fileId];
+        return (f.hash, f.owner);
     }
 }

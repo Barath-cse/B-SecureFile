@@ -41,6 +41,10 @@
   transition: border-color 0.3s;
 }
 
+.input-field::placeholder {
+  color: #999;
+}
+
 .input-field:focus {
   outline: none;
   border-color: #667eea;

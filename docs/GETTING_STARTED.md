@@ -56,7 +56,7 @@ npm install
 **Option B: Using Sepolia Testnet**
 
 1. Switch MetaMask to Sepolia testnet
-2. Get testnet ETH from faucet: https://sepoliafaucet.com
+2. Get **FREE testnet ETH** from faucet (see "Getting Free Gas" section below)
 3. Note RPC URL: `https://sepolia.infura.io/v3/YOUR_INFURA_KEY`
 
 ### Step 2: Deploy Smart Contract
@@ -86,6 +86,180 @@ BLOCKCHAIN_RPC=https://sepolia.infura.io/v3/YOUR_INFURA_KEY
 CONTRACT_ADDRESS=0xYourDeployedContractAddress
 PRIVATE_KEY=your_metamask_private_key
 ```
+
+---
+
+## Getting Free Gas (Testnet ETH)
+
+### What is "Gas"?
+Gas is the fee you pay to execute blockchain transactions. Since we're using **testnets** (not real money), you can get free testnet ETH from faucets for testing.
+
+### Free Gas Faucets by Network
+
+#### 1. **Sepolia Testnet** (Recommended)
+
+**Official Faucets:**
+
+**Option A: Sepolia Official Faucet** (Most Reliable)
+- URL: https://sepolia-faucet.pk910.de/
+- Steps:
+  1. Go to the faucet website
+  2. Paste your MetaMask address (copy from wallet)
+  3. Click "Claim Testnet Funds"
+  4. Wait 24 hours for next claim
+  5. Receive 0.05 - 1 ETH per claim
+- **Frequency**: Every 24 hours
+- **Amount**: 0.05 - 1 ETH per claim
+
+**Option B: Alchemy Faucet** (Fast, Requires Free Account)
+- URL: https://sepoliafaucet.com/
+- Steps:
+  1. Go to faucet website
+  2. Sign up with email or GitHub (free)
+  3. Paste your Sepolia address
+  4. Click "Send Me ETH"
+  5. Receive ETH in 1-2 minutes
+- **Frequency**: Every 24 hours
+- **Amount**: 0.5 ETH per claim
+
+**Option C: QuickNode Faucet** (Quick, Requires Free Account)
+- URL: https://faucet.quicknode.com/ethereum/sepolia
+- Steps:
+  1. Go to faucet website
+  2. Sign in with GitHub or Google (free)
+  3. Paste your Sepolia address
+  4. Click "Claim Testnet Funds"
+  5. Receive 0.5 ETH
+- **Frequency**: Every 24 hours
+- **Amount**: 0.5 ETH per claim
+
+#### 2. **Ganache (Local Development)** - FREE, UNLIMITED
+
+For local testing, use **Ganache**:
+
+**Why Use Ganache:**
+- ✅ **100% FREE** - No actual value
+- ✅ **Unlimited gas** - Each account starts with 100 ETH
+- ✅ **Instant** - All transactions happen in 1 second
+- ✅ **Risk-free** - No real money involved
+- ✅ **Perfect for development** - Fastest iteration
+
+**How to Get Free ETH in Ganache:**
+1. Download Ganache: https://www.trufflesuite.com/ganache
+2. Launch the application
+3. In the main window, you'll see 10 test accounts
+4. Each account has **100 ETH** by default (fake money)
+5. Copy any address and use it in MetaMask
+6. You have unlimited transactions!
+
+**Example Ganache Account:**
+```
+Address: 0x742d35Cc6634C0532925a3b844Bc9b7595f0bEb
+Balance: 100 ETH (infinite, only on Ganache)
+```
+
+---
+
+## How Much Gas Do You Need?
+
+### For BlockSecure Testing:
+
+**Single File Upload & Verification:**
+- Contract deployment: ~2-3 million gas (~0.5 ETH on mainnet)
+- Upload file hash: ~50,000 gas (~$2-5 on mainnet)
+- Grant access: ~60,000 gas (~$3-6 on mainnet)
+- Revoke access: ~50,000 gas (~$2-5 on mainnet)
+- Verify file: Free (read-only, no gas needed)
+
+**Testnet Amounts You Need:**
+- **Ganache**: You're set! 100 ETH per account
+- **Sepolia**: 0.5-1 ETH is plenty for 100+ transactions
+- **Goerli**: 0.5-1 ETH is plenty for 100+ transactions
+
+### Gas Price Monitoring:
+
+**Check current gas prices:**
+- Sepolia: https://sepolia.etherscan.io/gastracker
+- Mainnet: https://etherscan.io/gastracker (for reference)
+
+---
+
+## Complete Setup Flow with Free Gas
+
+### For Local Development (Ganache - Fastest):
+```
+1. Install Ganache → Unlimited FREE gas ✅
+2. Create custom network in MetaMask (http://127.0.0.1:7545)
+3. Each account has 100 ETH automatically
+4. Deploy contract and test
+5. Zero cost, instant transactions
+```
+
+### For Testnet Testing (Sepolia - Public):
+```
+1. Switch MetaMask to Sepolia
+2. Claim free testnet ETH from faucet (see options above)
+3. Wait for confirmation (instant to 2 minutes)
+4. Deploy contract and test
+5. Zero real-world cost, ~15-30 seconds per transaction
+```
+
+---
+
+## Troubleshooting Gas Issues
+
+### "Insufficient Funds" Error
+**Problem**: Transaction fails because you don't have enough ETH  
+**Solution**:
+- On Ganache: Use a different account (all have 100 ETH)
+- On Sepolia: Claim more ETH from faucet above
+- Check how much ETH is in your account (MetaMask shows balance)
+- Estimate gas cost: ~20-200k gas × 1 gwei (testnet) = 0.00002-0.0002 ETH
+
+### "Gas Too Low" Error
+**Problem**: Gas limit is set too low  
+**Solution**:
+- Increase gas limit in MetaMask to 500,000 (safe default)
+- Most transactions use 50,000-200,000 gas
+- MetaMask auto-estimates, but can be increased manually
+
+### Testnet Faucet Not Working
+**Problem**: Faucet webpage is down or rate-limited  
+**Solution**:
+- Try a different faucet (3 options listed above)
+- Wait the rate-limit period (usually 24 hours)
+- Use Ganache instead (no internet required, unlimited)
+- Check faucet status: https://status.sepolia.io
+
+### Slow Transactions on Sepolia
+**Problem**: Transaction taking > 1 minute  
+**Solution**:
+- This is normal (Sepolia is slower than mainnet)
+- Wait longer, blockchain is working
+- Check transaction on Etherscan: https://sepolia.etherscan.io
+- Paste your transaction hash to see status
+
+---
+
+## Important Notes
+
+⚠️ **Testnet ETH ≠ Real Money**
+- Sepolia/Goerli ETH has ZERO value
+- Only used for testing on public testnets
+- Cannot be traded or converted to real money
+- Safe to get from anyone offering it
+
+✅ **Ganache ETH is Completely Free**
+- Only exists on your local machine
+- 100% free and unlimited
+- Perfect for development
+- No internet required
+
+✅ **Best Practice**
+1. **Develop locally** with Ganache (unlimited, instant)
+2. **Test publicly** with Sepolia (free faucets, realistic)
+3. **Audit thoroughly** before mainnet
+4. **Deploy to mainnet** only when ready
 
 ---
 
@@ -265,8 +439,9 @@ Once testing is complete:
    - Study `TECHNICAL_ARCHITECTURE.md` to understand how it works
    - Check `ENCRYPTION_AND_SECURITY.md` for security details
 
-2. **Deploy to Testnet**
+4. **Deploy to Testnet**
    - Use Sepolia testnet for public testing
+   - Get free ETH from faucets (see "Getting Free Gas" section)
    - Deploy contract via Remix
    - Update backend `.env` with testnet details
    - Share with others for testing
@@ -291,6 +466,6 @@ For detailed information:
 - Security: See `docs/ENCRYPTION_AND_SECURITY.md`
 - API Reference: See `docs/QUICK_REFERENCE.md`
 - Smart Contract: See `docs/contracts/FileSecure.md`
-- Real-world examples: See `docs/REAL_TIME_SCENARIO_DETAILED.md`
+- Free Gas & Faucets: See section "Getting Free Gas" above in this document
 
 Happy testing! 🚀
