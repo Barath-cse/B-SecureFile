@@ -2,14 +2,20 @@
 
 A decentralized system combining blockchain, cryptography, and smart contracts to ensure file integrity, encryption, and controlled access.
 
+---
+
 ## 🎯 Core Features
 
 - **File Encryption**: AES-256 encryption before upload
-- **Integrity Verification**: SHA-256 hashing stored on blockchain
+- **Integrity Verification**: SHA-256 hashing for tamper-proof storage
 - **Wallet Authentication**: MetaMask integration for user identification
 - **Smart Contract Access Control**: Manage file permissions on-chain
 - **Tamper Detection**: Automatic detection of file modifications
-- **IPFS/Local Storage**: Decentralized or local file storage
+- **Local/Cloud Storage**: Flexible storage options (local or cloud-ready)
+- **Granular Access Control**: Grant/revoke permissions to specific users
+- **Non-Custodial**: You control your private keys, no passwords needed
+
+---
 
 ## 🏗 System Architecture
 
@@ -18,175 +24,338 @@ User Layer (React Frontend)
     ↓
 Encryption Layer (AES-256, SHA-256)
     ↓
-Storage Layer (IPFS / Local Server)
+API Layer (Node.js/Express Backend)
     ↓
-Blockchain Layer (Smart Contracts)
+Storage Layer (Local File System / Cloud Ready)
+    ↓
+Access Control Layer (Smart Contracts / Backend)
     ↓
 Verification Layer (Hash Comparison)
 ```
+
+**Data Flow:**
+1. User connects with MetaMask wallet
+2. File encrypted in browser with AES-256
+3. SHA-256 hash calculated for encrypted file
+4. Encrypted file + hash sent to backend
+5. Backend stores securely in uploads folder
+6. Access control enforced on download
+7. Hash verified automatically on retrieval
+
+---
 
 ## 📦 Project Structure
 
 ```
 B-SecureFile/
-├── frontend/              # React application
+├── frontend/                          # React application
 │   ├── src/
-│   │   ├── components/    # React components
-│   │   ├── utils/         # Encryption, hashing utilities
-│   │   └── App.js         # Main app component
+│   │   ├── components/
+│   │   │   ├── FileUpload.js           # Upload & encrypt files
+│   │   │   ├── FileVerify.js           # Verify & download files
+│   │   │   ├── AccessControl.js        # Grant/revoke access
+│   │   │   └── WalletConnect.js        # MetaMask integration
+│   │   ├── utils/
+│   │   │   └── crypto.js               # AES-256 & SHA-256 functions
+│   │   ├── styles/                     # CSS files
+│   │   └── App.js                      # Main application
 │   ├── package.json
 │   └── public/
-├── backend/               # Node.js/Express server
-│   ├── routes/            # API routes
-│   ├── utils/             # Server utilities
-│   ├── uploads/           # Local file storage
-│   ├── server.js          # Main server file
-│   └── package.json
-├── contracts/             # Solidity smart contracts
-│   └── FileSecure.sol
-└── README.md
+├── backend/                            # Node.js/Express server
+│   ├── routes/
+│   │   └── fileRoutes.js               # API endpoints (upload, download, verify, grant-access)
+│   ├── uploads/                        # Encrypted file storage
+│   │   ├── [fileId]                    # Encrypted file (binary)
+│   │   ├── [fileId].json               # File metadata
+│   │   └── [fileId].access.json        # Access control list
+│   ├── server.js                       # Express server
+│   ├── package.json
+│   └── public/                         # Static files
+├── contracts/                          # Solidity smart contracts
+│   ├── FileSecure.sol                  # Access control contract
+│   └── FileSecure.md                   # Contract documentation
+├── docs/
+│   ├── COMPLETE_GUIDE.md               # Full comprehensive guide
+│   ├── PRODUCTION_READINESS_ASSESSMENT.md
+│   └── [other documentation]
+└── README.md                           # You are here
 ```
+
+---
 
 ## 🛠 Setup Instructions
 
 ### Prerequisites
-- Node.js v16+
-- npm or yarn
-- MetaMask browser extension
-- Ganache (or use Sepolia testnet)
-- Remix IDE (for contract deployment)
+
+- **Node.js** v16 or higher ([download](https://nodejs.org/))
+- **npm** or **yarn** package manager
+- **MetaMask** browser extension ([install](https://metamask.io/))
+- **Git** for version control (optional)
+- Any modern browser (Chrome, Firefox, Edge, Safari)
 
 ### 1. Install Dependencies
 
-> ⚠️ **Optional: gas-free mode**
-> 
-> The app can run exactly like the older version, without requiring a connected wallet or spending any ETH. To enable this mode, open `frontend/src/App.js` and set `BLOCKCHAIN_ENABLED = false` (it's already false by default). The upload flow will still encrypt and hash files, and the backend will store metadata locally.
->
-> 
->#### Frontend
->```bash
->cd frontend
->npm install
->```
->
->#### Backend
->```bash
->cd backend
->npm install
->```
->
-### 2. Configure Blockchain
+```bash
+# Clone repository
+git clone <your-repo-url>
+cd B-SecureFile
 
-**Option A: Local Blockchain (Ganache)**
-- Install Ganache: https://www.trufflesuite.com/ganache
-- Start Ganache (Port: 7545)
-- Import wallet seed phrase into MetaMask
+# Install frontend dependencies
+cd frontend
+npm install
 
-**Option B: Sepolia Testnet**
-- Switch MetaMask to Sepolia
-- Get testnet ETH from faucet: https://sepoliafaucet.com
-
-### 3. Deploy Smart Contract
-
-1. Open Remix IDE: https://remix.ethereum.org
-2. Create new file: `FileSecure.sol`
-3. Copy contract code from `contracts/FileSecure.sol`
-4. Deploy with MetaMask on Ganache/Sepolia
-5. Copy contract address
-
-### 4. Configure Backend
-
-Create `.env` file in `backend/`:
-```
-PORT=5000
-BLOCKCHAIN_RPC=http://localhost:7545
-CONTRACT_ADDRESS=0x...
-PRIVATE_KEY=your_wallet_private_key
+# Install backend dependencies
+cd ../backend
+npm install
 ```
 
-### 5. Start Services
+### 2. Start the Application
 
-**Terminal 1 - Backend**
+**Terminal 1 - Start Backend:**
 ```bash
 cd backend
 npm start
+# Server runs on http://localhost:5000
 ```
 
-**Terminal 2 - Frontend**
+**Terminal 2 - Start Frontend:**
 ```bash
 cd frontend
 npm start
+# App opens on http://localhost:3000
 ```
 
+### 3. Connect MetaMask
+
+1. Install MetaMask extension in your browser
+2. Create or import a wallet
+3. Click **"Connect Wallet"** in the app
+4. Approve the connection in MetaMask pop-up
+5. You're ready to upload!
+
+### 4. Optional: Configure Blockchain
+
+To enable smart contract integration (optional):
+
+1. Install Ganache: https://www.trufflesuite.com/ganache
+2. Start Ganache on port 7545
+3. Import Ganache accounts into MetaMask
+4. Deploy `contracts/FileSecure.sol` using Remix
+5. Update backend with contract address
+
+---
+
 ## 🔐 How It Works
-*When running with `BLOCKCHAIN_ENABLED = false`, steps involving the blockchain are skipped; hashes are maintained in the backend only.*
 
-### File Upload
+### File Upload Process
 
-1. User connects wallet (MetaMask)
-2. Selects file to upload
-3. Frontend encrypts file with AES-256
-4. Calculates SHA-256 hash
-5. Stores encrypted file in IPFS/local storage
-6. Stores hash on blockchain via smart contract
-7. Stores file metadata in backend
+1. **Select File** - User chooses file from their computer
+2. **Encrypt** - AES-256 encryption applied in browser with wallet-derived key
+3. **Calculate Hash** - SHA-256 hash computed on encrypted file
+4. **Send to Backend** - Encrypted file + hash + metadata sent via POST
+5. **Store Securely** - Backend stores encrypted file and hash
+6. **Return File ID** - User receives unique File ID to share
 
-### File Verification
+**Security:** Original file never transmitted unencrypted. Backend cannot read file without key.
 
-1. User downloads file
-2. Frontend decrypts file with AES-256
-3. Recalculates SHA-256 hash
-4. Compares hash with blockchain record
-5. If match: File is authentic
-6. If mismatch: File has been tampered
+### File Verification & Download
+
+1. **Request Download** - User provides File ID and their wallet address
+2. **Check Access** - Backend verifies user has permission
+3. **Send File** - Encrypted file returned from backend
+4. **Verify Hash** - Frontend recalculates SHA-256 hash
+5. **Compare Hashes** - If stored hash ≠ calculated hash → TAMPERING DETECTED ⚠️
+6. **Decrypt** - User provides encryption key to decrypt in browser
+
+**Security:** Automatic verification prevents tampering. File integrity guaranteed.
+
+### Access Control
+
+1. **File Owner** uploads file
+2. **Owner Grants Access** - Runs `POST /api/grant-access`
+3. **Backend Updates** - Adds user address to `[fileId].access.json`
+4. **User Downloads** - When user requests file, backend checks access list
+5. **Access Granted/Denied** - User can only download if authorized
+6. **Instant Revoke** - Owner runs `POST /api/revoke-access` to immediately block access
+
+**Security:** Granular permission control. Only authorized users can download.
+
+---
 
 ## 🧪 Technologies
 
-- **Frontend**: React, Web3.js, crypto-js
-- **Backend**: Node.js, Express, multer, ethers.js
-- **Blockchain**: Solidity, Ganache, MetaMask
-- **Encryption**: AES-256, SHA-256
-- **Storage**: IPFS / Local Server
+| Layer | Technology | Purpose |
+|-------|-----------|---------|
+| **Frontend** | React.js | User interface & components |
+| **Authentication** | MetaMask | Wallet-based authentication |
+| **Encryption** | CryptoJS | AES-256 encryption & SHA-256 hashing |
+| **Backend** | Node.js + Express | REST API server |
+| **File Upload** | Multer | File upload handling |
+| **Storage** | Local File System | Encrypted file storage |
+| **Metadata** | JSON files | File info & access lists |
+| **Blockchain** | Solidity/Ethereum | Smart contracts (optional) |
+| **Package Manager** | npm | Dependency management |
+
+---
 
 ## 📝 API Endpoints
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/upload` | Upload encrypted file |
-| GET | `/api/file/:fileId` | Download file |
-| GET | `/api/verify/:fileId` | Verify file hash |
-| POST | `/api/grant-access` | Grant file access permission |
-| GET | `/api/user-files/:userAddress` | Get user's files |
+### File Management
+
+```bash
+POST /api/upload
+# Upload & encrypt file
+# Body: multipart/form-data
+#   - file: (binary) encrypted file
+#   - fileName: (string) original filename
+#   - fileId: (string) unique ID
+#   - owner: (string) wallet address
+#   - fileHash: (string) SHA-256 hash
+# Response: { fileId, owner, hash, timestamp }
+
+GET /api/file/:fileId?userAddress=0xaddr...
+# Download encrypted file
+# Query: userAddress (wallet address for access check)
+# Response: Binary encrypted file (200/403/404)
+
+POST /api/verify-file-hash
+# Verify file integrity
+# Body: { fileId, uploadedHash, userAddress }
+# Response: { isValid, storedHash, uploadedHash }
+```
+
+### Access Control
+
+```bash
+POST /api/grant-access
+# Grant file access to user
+# Body: { fileId, owner, userAddress }
+# Response: { message, accessList }
+
+POST /api/revoke-access
+# Revoke file access from user
+# Body: { fileId, owner, userAddress }
+# Response: { message, accessList }
+
+GET /api/access-list/:fileId/:owner
+# View users with access to file
+# Response: { fileId, owner, fileName, accessList }
+```
+
+---
 
 ## 🔗 Smart Contract Functions
 
-- `uploadFile(string hash, address owner)` - Register file on blockchain
-- `verifyFile(string hash)` - Verify file integrity
-- `grantAccess(uint fileId, address user)` - Grant access permission
-- `hasAccess(uint fileId, address user)` - Check access permission
-- `getFileDetails(uint fileId)` - Get file metadata
+*Located in: `contracts/FileSecure.sol`*
+
+```solidity
+// Upload file to blockchain
+uploadFile(string hash, address owner) 
+  → Returns: fileId, timestamp
+
+// Verify file authenticity
+verifyFile(string hash) 
+  → Returns: boolean isValid
+
+// Grant access permission
+grantAccess(uint fileId, address user)
+  → Emits: AccessGranted(fileId, user)
+
+// Check if user has access
+hasAccess(uint fileId, address user) 
+  → Returns: boolean hasAccess
+
+// Get file details
+getFileDetails(uint fileId) 
+  → Returns: hash, owner, timestamp, accessCount
+
+// Revoke access permission
+revokeAccess(uint fileId, address user)
+  → Emits: AccessRevoked(fileId, user)
+```
+
+---
 
 ## 📚 Security Considerations
 
-- AES-256 encryption ensures confidentiality
-- SHA-256 hashing ensures integrity
-- Blockchain immutability ensures authenticity
-- Smart contracts enforce access control
-- Private keys secured in environment variables
+### Encryption Security
 
-## 🚀 Future Enhancements
+✅ **AES-256 (Advanced Encryption Standard)**
+- 256-bit key = $2^{256}$ possible combinations
+- Military-grade encryption standard (NIST approved)
+- Computationally infeasible to brute-force
+- Backend cannot read encrypted files
 
-- [ ] Zero-knowledge proofs for privacy
-- [ ] Multi-signature access control
-- [ ] File versioning system
-- [ ] Enhanced UI/UX
-- [ ] Integration with actual IPFS network
-- [ ] Audit logging
+✅ **SHA-256 (Secure Hash Algorithm)**
+- 256-bit cryptographic hash function
+- One-way function (impossible to reverse)
+- Deterministic (same input = same hash, always)
+- Collision-resistant (changes to file immediately detected)
+
+### Authentication Security
+
+✅ **MetaMask Wallet Authentication**
+- Non-custodial (users control private keys)
+- No passwords to steal or forget
+- Fully compatible with Ethereum ecosystem
+- Industry-standard wallet integration
+
+### Access Control Security
+
+✅ **Fine-Grained Permissions**
+- Owner can grant/revoke access individually
+- Access list stored securely in backend
+- Access enforced at HTTP layer (mandatory check)
+- Owner always has access (no permission revocation)
+
+### Data Storage Security
+
+⚠️ **Current Limitations**
+- Files stored on local filesystem (not encrypted on disk)
+- Access lists stored in JSON files (not database)
+- Single server (no redundancy yet)
+- No automatic backups
+
+**Production Recommendations:**
+- Use cloud storage (AWS S3) with encryption at rest
+- Migrate to PostgreSQL database
+- Implement TLS/HTTPS for transport
+- Set up daily automated backups
+- Add audit logging for all operations
+- Implement rate limiting to prevent abuse
+- Enable security headers (CORS, CSP, etc.)
+
+---
+
+## 📖 Quick Start
+
+```bash
+# 1. Install dependencies
+cd frontend && npm install && cd ../backend && npm install
+
+# 2. Start backend
+cd backend && npm start
+
+# 3. Start frontend (in new terminal)
+cd frontend && npm start
+
+# 4. Open http://localhost:3000 in browser
+# 5. Connect MetaMask wallet
+# 6. Upload, verify, and share files!
+```
+
+---
 
 ## 📄 License
 
-MIT License
+MIT License - Free to use for educational and commercial purposes
+
+---
 
 ## 👨‍💻 Author
 
 BlockSecure Development Team
+
+---
+
+**For comprehensive documentation, see [COMPLETE_GUIDE.md](docs/COMPLETE_GUIDE.md)**

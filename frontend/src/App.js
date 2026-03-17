@@ -1,27 +1,41 @@
-import React, { useState } from 'react';
+import React, { useState, Suspense } from 'react';
 import WalletConnect from './components/WalletConnect';
-import FileUpload from './components/FileUpload';
-import FileVerify from './components/FileVerify';
-import AccessControl from './components/AccessControl';
 import './App.css';
+
+const FileUpload = React.lazy(() => import('./components/FileUpload'));
+const FileVerify = React.lazy(() => import('./components/FileVerify'));
+const AccessControl = React.lazy(() => import('./components/AccessControl'));
+
+// Loading fallback component
+const LoadingFallback = () => (
+  <div style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
+    <p>⏳ Loading...</p>
+  </div>
+);
 
 // If you don't want to interact with the blockchain (no gas required)
 // set this flag to false. The app will behave like the older version.
 const BLOCKCHAIN_ENABLED = true;
 
 // Contract configuration – only used when BLOCKCHAIN_ENABLED is true
-const contractAddress = "0x48b036c301671425943013473794ab722243ff7c";
+const contractAddress = "0xBCBf15C2899D62d6701A8294d88751E98512dec0";
 
 const CONTRACT_ABI = [
     {
-        "inputs": [{"internalType": "string", "name": "_fileHash", "type": "string"}],
+        "inputs": [
+            {"internalType": "string", "name": "fileId", "type": "string"},
+            {"internalType": "string", "name": "_hash", "type": "string"}
+        ],
         "name": "uploadFile",
         "outputs": [],
         "stateMutability": "nonpayable",
         "type": "function"
     },
     {
-        "inputs": [{"internalType": "string", "name": "_fileHash", "type": "string"}],
+        "inputs": [
+            {"internalType": "string", "name": "fileId", "type": "string"},
+            {"internalType": "string", "name": "_hash", "type": "string"}
+        ],
         "name": "verifyFile",
         "outputs": [{"internalType": "bool", "name": "", "type": "bool"}],
         "stateMutability": "view",
@@ -29,8 +43,8 @@ const CONTRACT_ABI = [
     },
     {
         "inputs": [
-            {"internalType": "string", "name": "_fileHash", "type": "string"},
-            {"internalType": "address", "name": "_userAddress", "type": "address"}
+            {"internalType": "string", "name": "fileId", "type": "string"},
+            {"internalType": "address", "name": "user", "type": "address"}
         ],
         "name": "grantAccess",
         "outputs": [],
@@ -39,8 +53,8 @@ const CONTRACT_ABI = [
     },
     {
         "inputs": [
-            {"internalType": "string", "name": "_fileHash", "type": "string"},
-            {"internalType": "address", "name": "_userAddress", "type": "address"}
+            {"internalType": "string", "name": "fileId", "type": "string"},
+            {"internalType": "address", "name": "user", "type": "address"}
         ],
         "name": "revokeAccess",
         "outputs": [],
@@ -48,29 +62,66 @@ const CONTRACT_ABI = [
         "type": "function"
     },
     {
-        "inputs": [{"internalType": "string", "name": "_fileHash", "type": "string"}],
-        "name": "getAccessList",
-        "outputs": [{"internalType": "address[]", "name": "", "type": "address[]"}],
+        "inputs": [
+            {"internalType": "string", "name": "fileId", "type": "string"},
+            {"internalType": "address", "name": "user", "type": "address"}
+        ],
+        "name": "hasAccess",
+        "outputs": [{"internalType": "bool", "name": "", "type": "bool"}],
         "stateMutability": "view",
         "type": "function"
     },
     {
-        "inputs": [{"internalType": "string", "name": "_fileHash", "type": "string"}],
-        "name": "getAccessCount",
-        "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+        "inputs": [
+            {"internalType": "string", "name": "fileId", "type": "string"}
+        ],
+        "name": "getFileDetails",
+        "outputs": [
+            {"internalType": "string", "name": "", "type": "string"},
+            {"internalType": "address", "name": "", "type": "address"}
+        ],
         "stateMutability": "view",
         "type": "function"
-    }
+    },
+
 ];
 
 function App() {
-  const [activeTab, setActiveTab] = useState('upload');
+  // Restore tab from session storage if available (to avoid redirect on page refresh)
+  const [activeTab, setActiveTab] = useState(() => {
+    try {
+      const lastTab = sessionStorage.getItem('lastTab');
+      if (lastTab) return lastTab;
+    } catch {}
+    return 'upload';
+  });
 
   // when blockchain is disabled we don't care about wallet or address
-  const [userAddress, setUserAddress] = useState(BLOCKCHAIN_ENABLED ? '' : 'offline');
-  const [connected, setConnected] = useState(BLOCKCHAIN_ENABLED ? false : true);
+  // initialize from storage if available; fallback to offline/empty
+  const [userAddress, setUserAddress] = useState(() => {
+    try {
+      const stored = localStorage.getItem('userAddress');
+      if (stored) return stored;
+    } catch {}
+    return BLOCKCHAIN_ENABLED ? '' : 'offline';
+  });
+  
+  // Restore connection status from localStorage (persist across page refresh)
+  const [connected, setConnected] = useState(() => {
+    if (!BLOCKCHAIN_ENABLED) return true;
+    try {
+      const wasConnected = localStorage.getItem('walletConnected');
+      return wasConnected === 'true';
+    } catch {}
+    return false;
+  });
+  
   const [provider, setProvider] = useState(null);
   const [contract, setContract] = useState(null);
+
+  // used to signal other components (e.g. AccessControl) that files may need reloading
+  const [filesRefreshToken, setFilesRefreshToken] = useState(0);
+  const triggerFilesRefresh = () => setFilesRefreshToken((t) => t + 1);
 
   const handleWalletConnect = async (address) => {
     // only used when blockchain enabled
@@ -84,6 +135,11 @@ function App() {
       setContract(contractInstance);
       setUserAddress(address);
       setConnected(true);
+
+      try {
+        localStorage.setItem('userAddress', address);
+        localStorage.setItem('walletConnected', 'true');
+      } catch {}
     } catch (err) {
       console.error('Error setting up contract:', err);
       alert('Failed to initialize contract. Please check your connection.');
@@ -92,9 +148,14 @@ function App() {
 
   const handleDisconnect = () => {
     setConnected(false);
-    setUserAddress('');
+    // keep userAddress so that users can still manage files offline and view their address
+    // but clear blockchain-connected state
     setProvider(null);
     setContract(null);
+    
+    try {
+      localStorage.setItem('walletConnected', 'false');
+    } catch {}
   };
 
   return (
@@ -111,51 +172,74 @@ function App() {
           <div className="authenticated-area">
             {BLOCKCHAIN_ENABLED && (
               <div className="user-info">
-                <p>Connected Wallet: <span className="wallet-address">{userAddress}</span></p>
-                <button className="disconnect-btn" onClick={handleDisconnect}>Disconnect</button>
+                <p>
+                  {connected ? 'Connected Wallet:' : 'Using Wallet:'}{' '}
+                  <span className="wallet-address">{userAddress || 'N/A'}</span>
+                </p>
+                {connected && (
+                  <button className="disconnect-btn" onClick={handleDisconnect}>Disconnect</button>
+                )}
               </div>
             )}
 
             <div className="tabs">
               <button
                 className={`tab-button ${activeTab === 'upload' ? 'active' : ''}`}
-                onClick={() => setActiveTab('upload')}
+                onClick={() => {
+                  setActiveTab('upload');
+                  sessionStorage.setItem('lastTab', 'upload');
+                }}
               >
                 📤 Upload File
               </button>
               <button
                 className={`tab-button ${activeTab === 'verify' ? 'active' : ''}`}
-                onClick={() => setActiveTab('verify')}
+                onClick={() => {
+                  setActiveTab('verify');
+                  sessionStorage.setItem('lastTab', 'verify');
+                }}
               >
                 ✅ Verify File
               </button>
-              {BLOCKCHAIN_ENABLED && (
-                <button
-                  className={`tab-button ${activeTab === 'access' ? 'active' : ''}`}
-                  onClick={() => setActiveTab('access')}
-                >
-                  🔐 Access Control
-                </button>
-              )}
+              <button
+                className={`tab-button ${activeTab === 'access' ? 'active' : ''}`}
+                onClick={() => {
+                  setActiveTab('access');
+                  sessionStorage.setItem('lastTab', 'access');
+                }}
+              >
+                🔐 Access Control
+              </button>
             </div>
 
             <div className="tab-content">
-              {activeTab === 'upload' && <FileUpload userAddress={userAddress} provider={provider} contract={contract} />}
-              {activeTab === 'verify' && <FileVerify userAddress={userAddress} />}
-              {activeTab === 'access' && BLOCKCHAIN_ENABLED && (
-                <AccessControl 
-                  userAddress={userAddress}
-                  provider={provider}
-                  contract={contract}
-                  abi={CONTRACT_ABI}
-                />
+              {activeTab === 'upload' && (
+                <Suspense fallback={<LoadingFallback />}>
+                  <FileUpload userAddress={userAddress} provider={provider} contract={contract} onUploadSuccess={triggerFilesRefresh} />
+                </Suspense>
+              )}
+              {activeTab === 'verify' && (
+                <Suspense fallback={<LoadingFallback />}>
+                  <FileVerify userAddress={userAddress} contract={contract} />
+                </Suspense>
+              )}
+              {activeTab === 'access' && (
+                <Suspense fallback={<LoadingFallback />}>
+                  <AccessControl 
+                    userAddress={userAddress}
+                    provider={provider}
+                    contract={contract}
+                    abi={CONTRACT_ABI}
+                    refreshToken={filesRefreshToken}
+                  />
+                </Suspense>
               )}
             </div>
           </div>
         )}      </main>
 
       <footer className="app-footer">
-        <p>© 2024 BlockSecure. Decentralized File Integrity System.</p>
+        <p>© BlockSecure. Decentralized File Integrity System.</p>
       </footer>
     </div>
   );
