@@ -96,10 +96,6 @@ B-SecureFile/
 ### 1. Install Dependencies
 
 ```bash
-# Clone repository
-git clone <your-repo-url>
-cd B-SecureFile
-
 # Install frontend dependencies
 cd frontend
 npm install
@@ -124,6 +120,22 @@ cd frontend
 npm start
 # App opens on http://localhost:3000
 ```
+
+### Docker Deployment
+
+For production deployment using Docker:
+
+1. Ensure Docker and Docker Compose are installed
+2. From the project root:
+```bash
+docker-compose up --build
+```
+3. Access the application at http://localhost
+
+The setup includes:
+- Backend service on port 5000
+- Frontend service on port 80 with nginx
+- Persistent uploads volume
 
 ### 3. Connect MetaMask
 
