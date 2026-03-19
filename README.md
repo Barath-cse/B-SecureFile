@@ -145,12 +145,24 @@ This repo includes `render.yaml` so Render can deploy both backend + frontend as
 1. Go to https://render.com and create an account (or sign in)
 2. Click **New** → **Web Service**
 3. Connect your GitHub repo (`Barath-cse/B-SecureFile`)
-4. Ensure the service uses `render.yaml` (it will auto-detect it)
+4. Ensure the service uses `render.yaml` (it should auto-detect it)
 5. Deploy the service
 
 Your app will then be available at the Render URL shown in the dashboard.
 
-> ✅ If you see CORS errors in the browser, it means the backend service is not running at the expected URL. Verify the Render service status and redeploy if needed.
+> ✅ If you see CORS errors in the browser, it means the backend service is not running at the expected URL (or the frontend is pointing to the wrong backend). Verify the Render service status and redeploy if needed.
+
+### Separate Frontend + Backend Services (Not Recommended)
+
+If you deploy frontend and backend as separate Render services, you must:
+
+1. **Ensure the backend service is running** and responds to `/health` and `/api/*`.
+   - Example: `https://your-backend.onrender.com/health` should return JSON.
+2. **Configure the frontend to call the backend** using an env var:
+   - Set `REACT_APP_API_BASE=https://your-backend.onrender.com/api` in the frontend service's Environment Variables.
+3. Re-deploy the frontend so it rebuilds with the correct API URL.
+
+> ✅ Frontend requests like `/api/upload` will fail with 404 if the frontend service is in charge of `/api` but there is no backend running at that origin.
 
 ### 3. Connect MetaMask
 
