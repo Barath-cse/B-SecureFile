@@ -1,29 +1,7 @@
-# Render deployment configuration for the B-SecureFile monorepo
-# This defines a single Web Service that builds the frontend and backend,
-# then serves the React app and API from the same origin (no CORS required).
-
 services:
   - type: web
-    name: blocksecure
+    name: blocksecure-fullstack
     env: node
-    region: oregon
-    plan: free
-    branch: main
-    repo: https://github.com/Barath-cse/B-SecureFile
     rootDirectory: backend
     buildCommand: npm run build
     startCommand: npm start
-    envVars:
-      - key: NODE_ENV
-        value: production
-      - key: CORS_ORIGIN
-        value: https://blocksecure.onrender.com
-      - key: BLOCKCHAIN_RPC
-        value: https://sepolia.drpc.org
-      - key: REACT_APP_API_BASE
-        value: /api
-      - key: REACT_APP_ENV
-        value: production
-      # Add PRIVATE_KEY if you want blockchain write access
-      # - key: PRIVATE_KEY
-      #   value: ""
