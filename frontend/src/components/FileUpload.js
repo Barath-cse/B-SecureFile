@@ -14,6 +14,9 @@ function FileUpload({ userAddress, provider, contract, onUploadSuccess }) {
   const [dragActive, setDragActive] = useState(false);
   const [uploadSuccessData, setUploadSuccessData] = useState(null);
 
+  // Supports local dev and production: use REACT_APP_API_BASE if set, else default to same-origin /api
+  const API_BASE = process.env.REACT_APP_API_BASE || '/api';
+
   const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100 MB
 
   const validateFile = (selectedFile) => {
@@ -123,7 +126,7 @@ function FileUpload({ userAddress, provider, contract, onUploadSuccess }) {
       formData.append('fileHash', encryptedFileHash);
       formData.append('fileId', fileId);
 
-      const response = await axios.post('https://blocksecure-backend.onrender.com/api/upload', formData, {
+      const response = await axios.post(`${API_BASE}/upload`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
         onUploadProgress: (progressEvent) => {
           const progress = 50 + Math.round((progressEvent.loaded * 25) / progressEvent.total);

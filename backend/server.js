@@ -26,6 +26,9 @@ app.use(cors({
   ]
 }));
 
+// Ensure preflight OPTIONS requests are handled for all endpoints
+app.options('*', cors());
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

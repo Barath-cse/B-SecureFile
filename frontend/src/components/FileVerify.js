@@ -21,7 +21,8 @@ function FileVerify({ userAddress, contract }) {
   const [calculatedFileHash, setCalculatedFileHash] = useState('');
   const [isDecrypting, setIsDecrypting] = useState(false);
 
-  const API_BASE = 'https://blocksecure-backend.onrender.com/api';
+  // Supports local dev and production: use REACT_APP_API_BASE if set, else default to same-origin /api
+  const API_BASE = process.env.REACT_APP_API_BASE || '/api';
 
   // Persist current tab on refresh to avoid WalletConnect redirect
   React.useEffect(() => {
