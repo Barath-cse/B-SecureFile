@@ -96,6 +96,10 @@ B-SecureFile/
 ### 1. Install Dependencies
 
 ```bash
+# Clone repository
+git clone <your-repo-url>
+cd B-SecureFile
+
 # Install frontend dependencies
 cd frontend
 npm install
@@ -120,52 +124,6 @@ cd frontend
 npm start
 # App opens on http://localhost:3000
 ```
-
-### Docker Deployment
-
-For production deployment using Docker:
-
-1. Ensure Docker and Docker Compose are installed
-2. From the project root:
-```bash
-docker-compose up --build
-```
-3. Access the application at http://localhost
-
-The setup includes:
-- Backend service on port 5000
-- Frontend service on port 80 with nginx
-- Persistent uploads volume
-
-### Render Deployment (Recommended: Fullstack on one URL)
-
-✅ **Goal:** `https://blocksecure.onrender.com`
-- `/` serves the React frontend
-- `/api/*` serves the Express backend
-
-This repo already includes a Render manifest (`render.yaml`) that deploys the full stack from the **backend folder**.
-
-#### 🔧 How it works
-1. Frontend is built into `backend/build`
-2. Backend serves `backend/build` as static files
-3. Backend routes mounted at `/api/*`
-4. Frontend calls `/api/*` (same origin) → no CORS, no 404
-
-#### 🚀 Deploy on Render
-1. Go to https://render.com and create/sign in
-2. Click **New → Web Service**
-3. Connect your GitHub repo (`Barath-cse/B-SecureFile`)
-4. Select the service and make sure it uses `render.yaml` (auto-detect)
-5. Deploy the service
-
-After deployment, your app will be available at:
-```
-https://blocksecure.onrender.com
-```
-
-✅ If you see a CORS error or 404 on `/api/*`, it means the backend is not running at the same origin. Verify the Render service is up and the build logs show `npm run build` succeeded (it should copy the frontend build into `backend/build`).
-
-> ⚠️ Important: If you previously deployed a separate `blocksecure-frontend` Static Site on Render, delete it—only the backend service should remain.
 
 ### 3. Connect MetaMask
 

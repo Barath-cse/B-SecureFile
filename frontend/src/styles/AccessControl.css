@@ -1,14 +1,15 @@
 .access-control-container {
   padding: 20px;
-  max-width: 900px;
+  width: 100%;
   margin: 0 auto;
 }
 
 .access-card {
   background: #f8f9fa;
-  border-radius: 12px;
+  border-radius: 10px;
   padding: 30px;
-  max-width: 850px;
+  width: 100%;
+  margin-left: 0px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
 }
 

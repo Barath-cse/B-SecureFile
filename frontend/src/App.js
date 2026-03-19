@@ -2,6 +2,7 @@ import React, { useState, Suspense } from 'react';
 import WalletConnect from './components/WalletConnect';
 import './App.css';
 
+const GettingStarted = React.lazy(() => import('./components/GettingStarted'));
 const FileUpload = React.lazy(() => import('./components/FileUpload'));
 const FileVerify = React.lazy(() => import('./components/FileVerify'));
 const AccessControl = React.lazy(() => import('./components/AccessControl'));
@@ -93,7 +94,7 @@ function App() {
       const lastTab = sessionStorage.getItem('lastTab');
       if (lastTab) return lastTab;
     } catch {}
-    return 'upload';
+    return 'getting-started'; // Start with getting started for new users
   });
 
   // when blockchain is disabled we don't care about wallet or address
@@ -184,11 +185,22 @@ function App() {
 
             <div className="tabs">
               <button
+                className={`tab-button ${activeTab === 'getting-started' ? 'active' : ''}`}
+                onClick={() => {
+                  setActiveTab('getting-started');
+                  sessionStorage.setItem('lastTab', 'getting-started');
+                }}
+                data-tab="getting-started"
+              >
+                🚀 Getting Started
+              </button>
+              <button
                 className={`tab-button ${activeTab === 'upload' ? 'active' : ''}`}
                 onClick={() => {
                   setActiveTab('upload');
                   sessionStorage.setItem('lastTab', 'upload');
                 }}
+                data-tab="upload"
               >
                 📤 Upload File
               </button>
@@ -198,6 +210,7 @@ function App() {
                   setActiveTab('verify');
                   sessionStorage.setItem('lastTab', 'verify');
                 }}
+                data-tab="verify"
               >
                 ✅ Verify File
               </button>
@@ -207,12 +220,18 @@ function App() {
                   setActiveTab('access');
                   sessionStorage.setItem('lastTab', 'access');
                 }}
+                data-tab="access"
               >
                 🔐 Access Control
               </button>
             </div>
 
             <div className="tab-content">
+              {activeTab === 'getting-started' && (
+                <Suspense fallback={<LoadingFallback />}>
+                  <GettingStarted />
+                </Suspense>
+              )}
               {activeTab === 'upload' && (
                 <Suspense fallback={<LoadingFallback />}>
                   <FileUpload userAddress={userAddress} provider={provider} contract={contract} onUploadSuccess={triggerFilesRefresh} />
