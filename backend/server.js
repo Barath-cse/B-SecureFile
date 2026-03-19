@@ -13,8 +13,9 @@ const PORT = process.env.PORT || 5000;
 // ======================
 // Middleware
 // ======================
+const corsOrigin = process.env.CORS_ORIGIN || '*';
 app.use(cors({
-  origin: '*', // change later to frontend URL
+  origin: corsOrigin,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   exposedHeaders: [
