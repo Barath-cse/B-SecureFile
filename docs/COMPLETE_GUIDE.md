@@ -1,10 +1,10 @@
-# BlockSecure - Complete Documentation Guide
+# B-SecureFile - Complete Documentation Guide
 
 **A Blockchain-Based Secure File Integrity & Access Control System**
 
 - **Version**: 1.0.0
 - **Status**: ✅ College Project Ready / Beta Deployable
-- **Last Updated**: March 17, 2026
+- **Last Updated**: March 20, 2026
 - **Tech Stack**: React, Node.js/Express, MetaMask, CryptoJS, Ethereum
 
 ---
@@ -28,23 +28,25 @@
 
 ## Project Overview
 
-**BlockSecure** is a secure file-sharing system that combines blockchain, encryption, and access control to ensure files are protected, tamper-proof, and only accessible by authorized users.
+**B-SecureFile** is a secure file-sharing system that combines blockchain, encryption, and access control to ensure files are protected, tamper-proof, and only accessible by authorized users.
 
 ### Key Highlights
 
 ✅ **File Encryption** - AES-256 encryption (military-grade)  
 ✅ **File Verification** - SHA-256 hash-based integrity checking  
+✅ **Encrypted Hash Verification** - Backend-side hash comparison (Option A - Recommended) ✨  
 ✅ **Wallet Authentication** - MetaMask integration  
 ✅ **Access Control** - Grant/revoke permissions to individual users  
 ✅ **Full-Stack Implementation** - Frontend + Backend + Smart Contracts  
 
-### Why BlockSecure?
+### Why B-SecureFile?
 
 - **Confidentiality**: Files encrypted before leaving your browser
 - **Integrity**: Tamper-proof using cryptographic hashing
 - **Access Control**: Only people you authorize can download files
 - **Decentralized**: Uses blockchain for immutable records
 - **No Single Point of Failure**: Wallet-based authentication (not passwords)
+- **Backend-Protected Verification**: Hash verification happens server-side, never exposing stored hashes to clients
 
 ---
 
@@ -81,10 +83,11 @@ cd frontend && npm start
    - Wait for "✅ Upload successful"
 
 6. **Test file verification**:
-   - Paste the **File ID** into the verify section
-   - Click "Verify & Download"
-   - File downloads and auto-verifies
-   - If verified, click "Decrypt" to view original file
+   - Paste the **File ID**hash is automatically verified** ✅
+   - Decrypt button only appears if verification passes
+   - Click "Decrypt" to view original file
+
+**That's it!** Your encrypted file was uploaded, verified server-side, and downloaded securely
 
 **That's it!** Your encrypted file was uploaded, verified, and downloaded.
 
@@ -344,6 +347,127 @@ POST /api/upload
 
 ---
 
+## Encrypted File Hash Verification System ✨
+
+### Overview (Option A - Recommended Implementation)
+
+The system implements **backend-side hash verification** for maximum security:
+
+- **Upload Phase**: Frontend calculates SHA-256 hash of the *encrypted* file and uploads both file and hash
+- **Storage Phase**: Backend stores encrypted file and hash in separate metadata files
+- **Verification Phase**: When downloading, hash is verified **server-side only** - never exposed to the client
+- **Result**: Only a simple `{valid: true/false}` is returned to frontend
+
+### Why This Approach?
+
+✅ **Hash Never Exposed** - Stored hash remains secret on backend  
+✅ **Frontend Tampering Prevented** - Client can't manipulate verification  
+✅ **Secure Comparison** - Backend compares hashes securely without revealing either value  
+✅ **Download Gating** - Decrypt button only appears if verification passes  
+✅ **Prevents Brute Force** - User can't guess correct hash values  
+
+### Implementation Details
+
+#### 1. Upload Flow
+```javascript
+// Frontend (FileUpload.js)
+const encryptedFile = encryptFile(file, key)
+const fileHash = calculateHash(encryptedFile)  // SHA-256 of encrypted file
+
+// Send to backend
+POST /api/upload
+{
+  file: encryptedFile,
+  fileHash: fileHash,
+  fileName: originalName,
+  owner: userAddress,
+  fileId: fileId
+}
+
+// Backend stores:
+// - uploads/[fileId]           → encrypted file (binary)
+// - uploads/[fileId].json      → metadata with stored hash
+```
+
+#### 2. Verification Flow (Backend-Side)
+```javascript
+// Backend (fileRoutes.js POST /api/verify-file-hash)
+const storedMetadata = readMetadata(fileId)
+const storedHash = storedMetadata.hash
+
+// Secure comparison
+const isValid = (uploadedHash === storedHash)
+
+// Response: only boolean, never expose stored hash
+Response: { valid: true/false }
+```
+
+#### 3. Frontend Download Flow
+```javascript
+// FileVerify.js
+1. User provides File ID
+2. Download encrypted file from backend
+3. Calculate hash of downloaded file
+4. Call POST /api/verify-file-hash
+5. Backend returns { valid: true/false }
+6. If valid === true:
+   - Show "✅ File Verified" message
+   - Enable "Decrypt" button
+7. If valid === false:
+   - Show "⚠️ File Tampered" warning
+   - Disable "Decrypt" button
+   - User cannot decrypt compromised file
+```
+
+### Security Gates
+
+| Gate | Condition | Result |
+|------|-----------|--------|
+| **Hash Mismatch** | `valid === false` | Decrypt button hidden ❌ |
+| **Hash Match** | `valid === true` | Decrypt button visible ✅ |
+| **File Modified** | Stored hash ≠ calculated hash | Tampering detected 🚨 |
+| **Wrong File** | User uploads different file | Hash won't match 🚨 |
+
+### Code References
+
+- **Backend Verification**: [backend/routes/fileRoutes.js](backend/routes/fileRoutes.js) → `POST /api/verify-file-hash`
+- **Frontend Verification UI**: [frontend/src/components/FileVerify.js](frontend/src/components/FileVerify.js)
+- **Frontend Download Logic**: [frontend/src/components/FileVerify.js](frontend/src/components/FileVerify.js) → `downloadAndVerify()`
+
+### Example Scenario
+
+```
+Alice uploads report.pdf:
+1. Frontend encrypts with AES-256
+2. Frontend calculates hash: abc123def456...
+3. Frontend sends to backend with hash
+4. Backend stores: report.pdf (encrypted) + metadata (hash: abc123def456...)
+
+Later, Bob downloads the file (has access):
+1. Bob clicks "Verify & Download"
+2. Bob's browser downloads encrypted file
+3. Bob's browser calculates hash: abc123def456...
+4. Bob's browser sends { fileId, uploadedHash: abc123def456... }
+5. Backend looks up stored hash: abc123def456...
+6. Backend compares: abc123def456... === abc123def456... ✅
+7. Backend responds: { valid: true }
+8. Bob's browser enables "Decrypt" button ✅
+9. Bob can now decrypt with his encryption key
+
+Attack Scenario - Hacker modifies file on backend:
+1. Hacker modifies encrypted file on server
+2. Bob downloads modified file
+3. Modified file calculates hash: xyz789uvw012...
+4. Backend stored hash: abc123def456...
+5. Backend compares: xyz789uvw012... === abc123def456... ❌
+6. Backend responds: { valid: false }
+7. Bob's browser shows warning: "File has been tampered!"
+8. Bob's browser disables "Decrypt" button ❌
+9. Bob cannot decrypt compromised file
+```
+
+---
+
 ## Access Control System
 
 ### How It Works
@@ -467,7 +591,7 @@ Response: Encrypted file (binary)
 Status: 200 (OK), 403 (forbidden), 404 (not found)
 ```
 
-### Verify File Hash
+### Verify File Hash (Backend-Side Verification)
 ```
 POST /api/verify-file-hash
 Content-Type: application/json
@@ -475,10 +599,16 @@ Content-Type: application/json
 {
   "fileId": "file-12345",
   "uploadedHash": "abc123...",
-  "userAddress": "0x1234..."  // Optional: for access check
+  "userAddress": "0x1234..."
 }
 
-Response: { isValid, storedHash, uploadedHash }
+Response: { valid: true/false }
+
+Security Note:
+- Stored hash is NEVER exposed to client
+- Only a boolean verification result is returned
+- Backend performs secure hash comparison
+- User cannot manipulate or guess correct hash value
 ```
 
 ### Grant Access
@@ -701,13 +831,18 @@ GET /api/file/file-1773427692657?userAddress=0xabcd...1234
 ### ✅ Working Now (Production Ready for College)
 
 - **File encryption** with AES-256
-- **File verification** with hashes
+- **File verification** with backend-side hash comparison ✨
+- **Encrypted hash verification** - Option A (Recommended)
+  - Hash stored securely server-side
+  - Never exposed to frontend
+  - Secure comparison prevents tampering
 - **Access control** (grant/revoke)
 - **MetaMask authentication**
 - **Full upload/download pipeline**
 - **File decryption in browser**
 - **Multiple file uploads**
 - **User-to-user file sharing**
+- **Tamper detection** - Automatic file integrity verification
 
 ### ⚠️ Limitations (Not Production-Ready Yet)
 

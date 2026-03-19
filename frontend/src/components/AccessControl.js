@@ -129,7 +129,7 @@ function AccessControl({ userAddress }) {
     } catch (err) {
       console.warn('[Auto-Refresh] Error updating access list:', err.message);
     }
-  }, [fileId, metadata, accessList]);
+  }, [fileId, metadata, accessList, API_BASE]);
 
   // Set up auto-refresh interval when file is loaded
   useEffect(() => {

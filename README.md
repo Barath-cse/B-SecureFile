@@ -1,4 +1,4 @@
-# BlockSecure – Blockchain-Based Secure File Integrity & Access Control System
+# B-SecureFile – Blockchain-Based Secure File Integrity & Access Control System
 
 A decentralized system combining blockchain, cryptography, and smart contracts to ensure file integrity, encryption, and controlled access.
 
@@ -219,9 +219,10 @@ GET /api/file/:fileId?userAddress=0xaddr...
 # Response: Binary encrypted file (200/403/404)
 
 POST /api/verify-file-hash
-# Verify file integrity
+# Verify file integrity (backend-side comparison)
 # Body: { fileId, uploadedHash, userAddress }
-# Response: { isValid, storedHash, uploadedHash }
+# Response: { valid: true/false }
+# Note: Backend securely compares hashes, stored hash never exposed to frontend
 ```
 
 ### Access Control
@@ -354,7 +355,7 @@ MIT License - Free to use for educational and commercial purposes
 
 ## 👨‍💻 Author
 
-BlockSecure Development Team
+B-SecureFile Development Team
 
 ---
 
