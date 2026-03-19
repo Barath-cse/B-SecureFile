@@ -137,6 +137,21 @@ The setup includes:
 - Frontend service on port 80 with nginx
 - Persistent uploads volume
 
+### Render Deployment (Recommended for hosted production)
+
+This repo includes `render.yaml` so Render can deploy both backend + frontend as a single full-stack service. This avoids CORS issues by serving the API and React app from the same origin.
+
+**Steps:**
+1. Go to https://render.com and create an account (or sign in)
+2. Click **New** → **Web Service**
+3. Connect your GitHub repo (`Barath-cse/B-SecureFile`)
+4. Ensure the service uses `render.yaml` (it will auto-detect it)
+5. Deploy the service
+
+Your app will then be available at the Render URL shown in the dashboard.
+
+> ✅ If you see CORS errors in the browser, it means the backend service is not running at the expected URL. Verify the Render service status and redeploy if needed.
+
 ### 3. Connect MetaMask
 
 1. Install MetaMask extension in your browser
