@@ -123,7 +123,7 @@ function FileUpload({ userAddress, provider, contract, onUploadSuccess }) {
       formData.append('fileHash', encryptedFileHash);
       formData.append('fileId', fileId);
 
-      const response = await axios.post('http://localhost:5000/api/upload', formData, {
+      const response = await axios.post('https://blocksecure-backend.onrender.com/api/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
         onUploadProgress: (progressEvent) => {
           const progress = 50 + Math.round((progressEvent.loaded * 25) / progressEvent.total);

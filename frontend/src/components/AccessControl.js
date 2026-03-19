@@ -28,7 +28,7 @@ function AccessControl({ userAddress }) {
     showMessage('✓ Copied to clipboard');
   };
 
-  const API_BASE = 'http://localhost:5000/api';
+  const API_BASE = 'https://blocksecure-backend.onrender.com/api';
 
   const checkFile = async () => {
     if (!fileId.trim()) {
