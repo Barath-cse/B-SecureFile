@@ -11,17 +11,13 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Middleware
-app.use(cors());
+app.use(cors()); // update later with frontend URL
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// API routes FIRST
+// API routes
 app.use('/api', fileRoutes);
 app.use('/api', blockchainRoutes);
-
-// Serve React build
-const buildPath = path.join(__dirname, 'build');
-app.use(express.static(buildPath));
 
 // Ensure uploads folder exists
 const uploadsDir = path.join(__dirname, 'uploads');
@@ -29,9 +25,9 @@ if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
-// React fallback
-app.get('*', (req, res) => {
-  res.sendFile(path.join(buildPath, 'index.html'));
+// Health check route (VERY useful)
+app.get('/', (req, res) => {
+  res.send('Backend is running 🚀');
 });
 
 // Start server
