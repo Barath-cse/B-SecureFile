@@ -2,6 +2,6 @@ services:
   - type: web
     name: blocksecure-fullstack
     env: node
-    rootDirectory: backend
+    rootDir: backend
     buildCommand: npm run build
     startCommand: npm start
