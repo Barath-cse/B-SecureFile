@@ -13,7 +13,7 @@ services:
     buildCommand: |
       cd backend && npm install
       cd ../frontend && npm install
-      npm run build
+      cd ../frontend && npm run build
     startCommand: |
       cd backend && npm start
     envVars:
@@ -23,6 +23,10 @@ services:
         value: https://b-securefile.onrender.com
       - key: BLOCKCHAIN_RPC
         value: https://sepolia.drpc.org
+      - key: REACT_APP_API_BASE
+        value: /api
+      - key: REACT_APP_ENV
+        value: production
       # Add PRIVATE_KEY if you want blockchain write access
       # - key: PRIVATE_KEY
       #   value: ""
