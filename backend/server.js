@@ -36,11 +36,12 @@ app.use(express.urlencoded({ extended: true }));
 // ======================
 // Static Files (Frontend)
 // ======================
-const frontendBuildDir = path.join(__dirname, '..', 'frontend', 'build');
+// In fullstack deployments, we build the React app into backend/build.
+// If that doesn't exist (legacy), we fall back to backend/public.
+const buildDir = path.join(__dirname, 'build');
 const publicDir = path.join(__dirname, 'public');
 
-// Use frontend build if exists, otherwise fallback to public
-const staticDir = fs.existsSync(frontendBuildDir) ? frontendBuildDir : publicDir;
+const staticDir = fs.existsSync(buildDir) ? buildDir : publicDir;
 app.use(express.static(staticDir));
 
 // ======================

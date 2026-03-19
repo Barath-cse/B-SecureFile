@@ -10,17 +10,14 @@ services:
     plan: free
     branch: main
     repo: https://github.com/Barath-cse/B-SecureFile
-    buildCommand: |
-      cd backend && npm install
-      cd ../frontend && npm install
-      cd ../frontend && npm run build
-    startCommand: |
-      cd backend && npm start
+    rootDirectory: backend
+    buildCommand: npm run build
+    startCommand: npm start
     envVars:
       - key: NODE_ENV
         value: production
       - key: CORS_ORIGIN
-        value: https://b-securefile.onrender.com
+        value: https://blocksecure.onrender.com
       - key: BLOCKCHAIN_RPC
         value: https://sepolia.drpc.org
       - key: REACT_APP_API_BASE
