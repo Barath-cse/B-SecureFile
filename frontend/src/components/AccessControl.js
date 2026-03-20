@@ -1,572 +1,190 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import '../styles/AccessControl.css';
+import React, { useState, useCallback } from 'react';
 
-// Access control panel with improved UI for managing file permissions
-function AccessControl({ userAddress }) {
+// Prefer REACT_APP_API_URL (prod) then REACT_APP_API_BASE (dev), fallback to same-origin /api
+const API_BASE = process.env.REACT_APP_API_URL || process.env.REACT_APP_API_BASE || '/api';
+
+const AccessControl = () => {
   const [fileId, setFileId] = useState('');
+  const [ownerAddress, setOwnerAddress] = useState('');
+  const [targetAddress, setTargetAddress] = useState('');
   const [metadata, setMetadata] = useState(null);
-  const [addressInput, setAddressInput] = useState('');
-  const [message, setMessage] = useState('');
-  const [messageType, setMessageType] = useState('');
-  const [loading, setLoading] = useState(false);
   const [accessList, setAccessList] = useState([]);
-  const [showConfirmDialog, setShowConfirmDialog] = useState(null);
-  // Key sharing states
-  const [shareKeyRecipient, setShareKeyRecipient] = useState('');
-  const [encryptionKeyInput, setEncryptionKeyInput] = useState('');
-  const [showShareKeySection, setShowShareKeySection] = useState(false);
+  const [message, setMessage] = useState('');
+  const [loading, setLoading] = useState(false);
 
-
-  const showMessage = (text, type = 'success') => {
-    setMessage(text);
-    setMessageType(type);
-    setTimeout(() => setMessage(''), 5000);
-  };
-
-  const copyToClipboard = (text) => {
-    navigator.clipboard.writeText(text);
-    showMessage('✓ Copied to clipboard');
-  };
-
-  // Supports local dev and production: use REACT_APP_API_BASE if set, else default to same-origin /api
-  const API_BASE = process.env.REACT_APP_API_BASE || '/api';
-
-  const checkFile = async () => {
+  // ✅ Check file metadata
+  const checkFile = useCallback(async () => {
     if (!fileId.trim()) {
-      showMessage('Enter a file ID', 'error');
+      setMessage('Please enter a File ID');
       return;
     }
-    if (!userAddress) {
-      showMessage('Please connect your wallet first', 'error');
-      return;
-    }
-    
-    setLoading(true);
     try {
-      // First get file metadata
-      console.log('Checking file:', fileId);
-      const res = await fetch(`${API_BASE}/file-metadata/${fileId}`);
-      if (!res.ok) throw new Error('File not found');
+      setMessage('');
+      const res = await fetch(`${API_BASE}/file-metadata/${fileId.trim()}`);
+
+      if (!res.ok) {
+        throw new Error('File not found');
+      }
+
       const data = await res.json();
       setMetadata(data);
-      
-      console.log('File metadata loaded:', data);
-      console.log('File owner:', data.owner, 'Current user:', userAddress);
-      
-      // Then get access list from shared keys
-      try {
-        const accessUrl = `${API_BASE}/access-list/${fileId}/${data.owner}`;
-        console.log('Fetching access list from:', accessUrl);
-        console.log('Owner from metadata:', data.owner);
-        
-        const accessRes = await fetch(accessUrl);
-        console.log('Access list response status:', accessRes.status);
-        
-        if (accessRes.ok) {
-          const accessData = await accessRes.json();
-          console.log('Access list raw response:', accessData);
-          
-          if (accessData && accessData.accessList && Array.isArray(accessData.accessList)) {
-            const usersList = accessData.accessList.map(access => access.userAddress).filter(addr => addr !== undefined);
-            console.log('Extracted users list:', usersList);
-            console.log(`Setting accessList to ${usersList.length} users`);
-            setAccessList(usersList);
-          } else {
-            console.warn('No valid accessList in response, got:', accessData);
-            setAccessList([]);
-          }
-        } else {
-          console.warn('Access list endpoint error:', accessRes.status);
-          const errorData = await accessRes.json();
-          console.warn('Error details:', errorData);
-          // Fallback to metadata.allowedUsers if available
-          setAccessList(data.allowedUsers || []);
-        }
-      } catch (accessErr) {
-        console.error('Error fetching access list:', accessErr);
-        setAccessList(data.allowedUsers || []);
-      }
-      
-      showMessage('File metadata loaded successfully');
+      setMessage('Metadata loaded');
     } catch (err) {
       console.error('Error in checkFile:', err);
-      setMetadata(null);
-      setAccessList([]);
-      showMessage(err.message, 'error');
+      setMessage(err.message || 'Failed to load file');
+    }
+  }, [fileId]);
+
+  // ✅ Refresh access list
+  const refreshAccessList = useCallback(async () => {
+    if (!fileId.trim() || !ownerAddress.trim()) {
+      setMessage('File ID and Owner Address are required');
+      return;
+    }
+    try {
+      setLoading(true);
+      setMessage('Loading access list...');
+      const res = await fetch(`${API_BASE}/access-list/${fileId.trim()}/${ownerAddress.trim()}`);
+
+      if (!res.ok) {
+        throw new Error('Failed to fetch access list');
+      }
+
+      const data = await res.json();
+      setAccessList(data.accessList || []);
+      setMessage(`Access list loaded (${data.accessCount || 0})`);
+    } catch (err) {
+      console.error('Error fetching access list:', err);
+      setMessage(err.message || 'Error fetching access list');
     } finally {
       setLoading(false);
     }
-  };
+  }, [fileId, ownerAddress]);
 
-  // Auto-refresh access list to show users until expiry, then auto-revoke
-  const refreshAccessListSilent = useCallback(async () => {
-    if (!fileId.trim() || !metadata) {
+  // ✅ Grant access
+  const grantAccess = async (address) => {
+    if (!fileId.trim() || !ownerAddress.trim() || !address.trim()) {
+      setMessage('File ID, Owner Address, and User Address are required');
       return;
     }
-
     try {
-      const accessUrl = `${API_BASE}/access-list/${fileId}/${metadata.owner}`;
-      const accessRes = await fetch(accessUrl);
-      
-      if (accessRes.ok) {
-        const accessData = await accessRes.json();
-        
-        if (accessData && accessData.accessList && Array.isArray(accessData.accessList)) {
-          const usersList = accessData.accessList.map(access => access.userAddress).filter(addr => addr !== undefined);
-          console.log(`[Auto-Refresh] Access list updated: ${usersList.length} users`);
-          
-          // Check if any users were removed (expired)
-          const removedUsers = accessList.filter(user => !usersList.includes(user));
-          if (removedUsers.length > 0) {
-            console.log(`[Auto-Revoke] Expired keys detected for: ${removedUsers.map(u => u.slice(0, 6) + '...' + u.slice(-4)).join(', ')}`);
-          }
-          
-          setAccessList(usersList);
-        } else {
-          setAccessList([]);
-        }
-      }
-    } catch (err) {
-      console.warn('[Auto-Refresh] Error updating access list:', err.message);
-    }
-  }, [fileId, metadata, accessList, API_BASE]);
-
-  // Set up auto-refresh interval when file is loaded
-  useEffect(() => {
-    if (!fileId.trim() || !metadata) {
-      return;
-    }
-
-    console.log(`[Auto-Refresh] Starting 30-second refresh interval for file ${fileId}`);
-    const interval = setInterval(() => {
-      refreshAccessListSilent();
-    }, 30000); // Refresh every 30 seconds
-
-    return () => {
-      clearInterval(interval);
-      console.log(`[Auto-Refresh] Cleared refresh interval`);
-    };
-  }, [fileId, metadata, refreshAccessListSilent]);
-
-  const grantAccess = async () => {
-    if (!metadata) return;
-    if (metadata.owner.toLowerCase() !== userAddress.toLowerCase()) {
-      showMessage('Only owner can grant access', 'error');
-      return;
-    }
-    if (!addressInput.trim()) {
-      showMessage('Enter a valid address', 'error');
-      return;
-    }
-    if (!addressInput.match(/^0x[a-fA-F0-9]{40}$/)) {
-      showMessage('Invalid Ethereum address format', 'error');
-      return;
-    }
-    
-    setShowConfirmDialog({
-      action: 'grant',
-      address: addressInput,
-      message: `Grant access to ${addressInput.slice(0, 6)}...${addressInput.slice(-4)}?`
-    });
-  };
-
-  const confirmGrant = async () => {
-    setLoading(true);
-    try {
+      setLoading(true);
       const res = await fetch(`${API_BASE}/grant-access`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          fileId, 
-          ownerAddress: userAddress,
-          userAddress: addressInput 
-        })
+        body: JSON.stringify({ fileId: fileId.trim(), ownerAddress: ownerAddress.trim(), userAddress: address.trim() })
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Grant failed');
-      showMessage(`✓ Access granted to ${addressInput.slice(0, 6)}...${addressInput.slice(-4)}`);
-      setAddressInput('');
-      setShowConfirmDialog(null);
-      // Refresh access list
-      if (!accessList.includes(addressInput)) {
-        setAccessList([...accessList, addressInput]);
+
+      if (!res.ok) {
+        throw new Error('Grant access failed');
       }
+
+      await refreshAccessList();
+      setMessage(`Access granted to ${address}`);
     } catch (err) {
-      console.error(err);
-      showMessage(err.message, 'error');
+      console.error('Error granting access:', err);
+      setMessage(err.message || 'Grant access failed');
     } finally {
       setLoading(false);
     }
   };
 
-  const revokeAccess = async () => {
-    if (!metadata) return;
-    if (metadata.owner.toLowerCase() !== userAddress.toLowerCase()) {
-      showMessage('Only owner can revoke access', 'error');
+  // ✅ Revoke access
+  const revokeAccess = async (address) => {
+    if (!fileId.trim() || !ownerAddress.trim() || !address.trim()) {
+      setMessage('File ID, Owner Address, and User Address are required');
       return;
     }
-    if (!addressInput.trim()) {
-      showMessage('Enter a valid address', 'error');
-      return;
-    }
-    if (!addressInput.match(/^0x[a-fA-F0-9]{40}$/)) {
-      showMessage('Invalid Ethereum address format', 'error');
-      return;
-    }
-
-    setShowConfirmDialog({
-      action: 'revoke',
-      address: addressInput,
-      message: `Revoke access from ${addressInput.slice(0, 6)}...${addressInput.slice(-4)}?`
-    });
-  };
-
-  const confirmRevoke = async () => {
-    setLoading(true);
     try {
+      setLoading(true);
       const res = await fetch(`${API_BASE}/revoke-access`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          fileId, 
-          ownerAddress: userAddress,
-          userAddress: addressInput 
-        })
+        body: JSON.stringify({ fileId: fileId.trim(), ownerAddress: ownerAddress.trim(), userAddress: address.trim() })
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Revoke failed');
-      showMessage(`✓ Access revoked from ${addressInput.slice(0, 6)}...${addressInput.slice(-4)}`);
-      setAddressInput('');
-      setShowConfirmDialog(null);
-      // Update access list
-      setAccessList(accessList.filter(addr => addr.toLowerCase() !== addressInput.toLowerCase()));
+
+      if (!res.ok) {
+        throw new Error('Revoke access failed');
+      }
+
+      await refreshAccessList();
+      setMessage(`Access revoked for ${address}`);
     } catch (err) {
-      console.error(err);
-      showMessage(err.message, 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Share encryption key with another wallet
-  const shareKey = async () => {
-    if (!metadata) return;
-    if (metadata.owner.toLowerCase() !== userAddress.toLowerCase()) {
-      showMessage('Only owner can share encryption keys', 'error');
-      return;
-    }
-    if (!shareKeyRecipient.trim()) {
-      showMessage('Enter a valid recipient address', 'error');
-      return;
-    }
-    if (!encryptionKeyInput.trim()) {
-      showMessage('Enter the encryption key', 'error');
-      return;
-    }
-    if (!shareKeyRecipient.match(/^0x[a-fA-F0-9]{40}$/)) {
-      showMessage('Invalid Ethereum address format', 'error');
-      return;
-    }
-
-    setShowConfirmDialog({
-      action: 'shareKey',
-      address: shareKeyRecipient,
-      message: `Share encryption key with ${shareKeyRecipient.slice(0, 6)}...${shareKeyRecipient.slice(-4)}? They will be able to decrypt the file.`
-    });
-  };
-
-  const confirmShareKey = async () => {
-    setLoading(true);
-    try {
-      const shareKeyPayload = { 
-        fileId, 
-        encryptionKey: encryptionKeyInput, 
-        recipientAddress: shareKeyRecipient,
-        ownerAddress: userAddress,
-        originalFilename: metadata?.originalName || metadata?.fileName || `file-${fileId}`
-      };
-      
-      console.log('Sharing key with payload:', shareKeyPayload);
-      
-      const res = await fetch(`${API_BASE}/share-key`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(shareKeyPayload)
-      });
-      
-      const data = await res.json();
-      console.log('Share key response:', data);
-      
-      if (!res.ok) throw new Error(data.error || 'Share failed');
-      
-      showMessage(`✓ Encryption key shared with ${shareKeyRecipient.slice(0, 6)}...${shareKeyRecipient.slice(-4)}!\nExpires: ${new Date(data.expiresAt).toLocaleDateString()}`);
-      setShareKeyRecipient('');
-      setEncryptionKeyInput('');
-      setShowConfirmDialog(null);
-      
-      // Refresh the access list to show newly shared user
-      await new Promise(resolve => setTimeout(resolve, 300));
-      await checkFile();
-    } catch (err) {
-      console.error('Error sharing key:', err);
-      showMessage(err.message, 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Revoke a key share
-  const revokeKeyShare = async () => {
-    if (!metadata) return;
-    if (metadata.owner.toLowerCase() !== userAddress.toLowerCase()) {
-      showMessage('Only owner can revoke key shares', 'error');
-      return;
-    }
-    if (!shareKeyRecipient.trim()) {
-      showMessage('Enter a valid recipient address', 'error');
-      return;
-    }
-    if (!shareKeyRecipient.match(/^0x[a-fA-F0-9]{40}$/)) {
-      showMessage('Invalid Ethereum address format', 'error');
-      return;
-    }
-
-    setShowConfirmDialog({
-      action: 'revokeKeyShare',
-      address: shareKeyRecipient,
-      message: `Revoke key share from ${shareKeyRecipient.slice(0, 6)}...${shareKeyRecipient.slice(-4)}?`
-    });
-  };
-
-  const confirmRevokeKeyShare = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch(`${API_BASE}/revoke-key-share`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          fileId, 
-          recipientAddress: shareKeyRecipient,
-          ownerAddress: userAddress
-        })
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Revoke failed');
-      showMessage(`✓ Key share revoked from ${shareKeyRecipient.slice(0, 6)}...${shareKeyRecipient.slice(-4)}`);
-      setShareKeyRecipient('');
-      setEncryptionKeyInput('');
-      setShowConfirmDialog(null);
-    } catch (err) {
-      console.error(err);
-      showMessage(err.message, 'error');
+      console.error('Error revoking access:', err);
+      setMessage(err.message || 'Revoke access failed');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="access-control-container">
-      <div className="access-card">
-        <h2>🔐 Access Control Panel</h2>
-        
-        {/* File Lookup Section */}
-        <div className="section lookup-section">
-          <h3>📄 Lookup File</h3>
-          <div className="input-group">
-            <input
-              type="text"
-              placeholder="Enter file ID (e.g., 1234567890-abc123)"
-              value={fileId}
-              onChange={e => setFileId(e.target.value)}
-              disabled={loading}
-              className="input-field"
-            />
-            <button onClick={checkFile} disabled={loading} className="btn btn-primary">
-              {loading ? '🔄 Loading...' : '🔍 Lookup'}
-            </button>
-          </div>
-        </div>
+    <div>
+      <h2>Access Control</h2>
 
-        {/* File Metadata Section */}
-        {metadata && (
-          <div className="section metadata-section">
-            <h3>📋 File Details</h3>
-            <div className="metadata-grid">
-              <div className="metadata-item">
-                <label>Owner</label>
-                <div className="metadata-value">
-                  <span className="badge-owner">{metadata.owner.slice(0, 6)}...{metadata.owner.slice(-4)}</span>
-                  <button 
-                    className="copy-btn" 
-                    onClick={() => copyToClipboard(metadata.owner)}
-                    title="Copy address"
-                  >
-                    📋
-                  </button>
-                </div>
-              </div>
-              <div className="metadata-item">
-                <label>File Hash</label>
-                <div className="metadata-value truncated">
-                  <code>{metadata.fileHash}</code>
-                  <button 
-                    className="copy-btn" 
-                    onClick={() => copyToClipboard(metadata.fileHash)}
-                    title="Copy hash"
-                  >
-                    📋
-                  </button>
-                </div>
-              </div>
-            </div>
+      <input
+        type="text"
+        placeholder="Enter File ID"
+        value={fileId}
+        onChange={(e) => setFileId(e.target.value)}
+      />
 
-            {/* Access Users List */}
-            {metadata.owner.toLowerCase() === userAddress.toLowerCase() && (
-              <div className="access-users">
-                <h4>👥 Users with Access ({accessList.length})</h4>
-                {accessList.length > 0 ? (
-                  <div className="user-list">
-                    {accessList.map((addr, idx) => (
-                      <div key={idx} className="user-item">
-                        <span>{addr.slice(0, 6)}...{addr.slice(-4)}</span>
-                        <button 
-                          className="copy-btn" 
-                          onClick={() => copyToClipboard(addr)}
-                          title="Copy address"
-                        >
-                          📋
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="empty-text">No users have access yet</p>
-                )}
-              </div>
-            )}
-          </div>
-        )}
+      <input
+        type="text"
+        placeholder="Owner Wallet Address"
+        value={ownerAddress}
+        onChange={(e) => setOwnerAddress(e.target.value)}
+        style={{ marginLeft: '8px', width: '320px' }}
+      />
 
-        {/* Access Control Actions */}
-        {metadata && metadata.owner.toLowerCase() === userAddress.toLowerCase() && (
-          <>
-            <div className="section action-section">
-              <h3>➕ Grant/Revoke Access</h3>
-              <div className="input-group">
-                <input
-                  type="text"
-                  placeholder="Ethereum address (0x...)"
-                  value={addressInput}
-                  onChange={e => setAddressInput(e.target.value)}
-                  disabled={loading}
-                  className="input-field"
-                />
-                <button onClick={grantAccess} disabled={loading} className="btn btn-success">
-                  ✓ Grant
-                </button>
-                <button onClick={revokeAccess} disabled={loading} className="btn btn-danger">
-                  ✕ Revoke
-                </button>
-              </div>
-            </div>
+      <button onClick={checkFile}>Check File</button>
+      <button onClick={refreshAccessList}>Load Access List</button>
 
-            <div className="section share-key-section">
-              <h3>🔑 Share Encryption Key</h3>
-              <button 
-                onClick={() => setShowShareKeySection(!showShareKeySection)}
-                className="btn btn-info"
-              >
-                {showShareKeySection ? '▼ Hide Key Sharing' : '▶ Show Key Sharing'}
-              </button>
+      {message && <p style={{ color: 'orange' }}>{message}</p>}
 
-              {showShareKeySection && (
-                <div className="share-key-form">
-                  <p className="section-info">⚠️ Important: Only share the encryption key with trusted users who have blockchain access to this file.</p>
-                  
-                  <div className="form-group">
-                    <label>Recipient Wallet Address</label>
-                    <input
-                      type="text"
-                      placeholder="Recipient's Ethereum address (0x...)"
-                      value={shareKeyRecipient}
-                      onChange={e => setShareKeyRecipient(e.target.value)}
-                      disabled={loading}
-                      className="input-field"
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label>Encryption Key</label>
-                    <input
-                      type="text"
-                      placeholder="Paste the encryption key here"
-                      value={encryptionKeyInput}
-                      onChange={e => setEncryptionKeyInput(e.target.value)}
-                      disabled={loading}
-                      className="input-field"
-                    />
-                    <small className="help-text">This is the encryption key from Step 1 (Upload Details)</small>
-                  </div>
-
-                  <div className="button-group">
-                    <button 
-                      onClick={shareKey} 
-                      disabled={loading} 
-                      className="btn btn-success"
-                    >
-                      {loading ? '⏳ Sharing...' : '🔐 Share Key'}
-                    </button>
-                    <button 
-                      onClick={revokeKeyShare} 
-                      disabled={loading} 
-                      className="btn btn-danger"
-                    >
-                      {loading ? '⏳ Revoking...' : '❌ Revoke Key Share'}
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </>
-        )}
-
-        {/* Messages */}
-        {message && <div className={`message ${messageType}`}>{message}</div>}
-
-        {/* Confirmation Dialog */}
-        {showConfirmDialog && (
-          <div className="modal-overlay" onClick={() => setShowConfirmDialog(null)}>
-            <div className="modal-dialog" onClick={e => e.stopPropagation()}>
-              <h3>Confirm Action</h3>
-              <p>{showConfirmDialog.message}</p>
-              <div className="modal-buttons">
-                <button 
-                  onClick={() => setShowConfirmDialog(null)}
-                  className="btn btn-secondary"
-                  disabled={loading}
-                >
-                  Cancel
-                </button>
-                <button 
-                  onClick={() => {
-                    if (showConfirmDialog.action === 'grant') confirmGrant();
-                    else if (showConfirmDialog.action === 'revoke') confirmRevoke();
-
-                    else if (showConfirmDialog.action === 'shareKey') confirmShareKey();
-                    else if (showConfirmDialog.action === 'revokeKeyShare') confirmRevokeKeyShare();
-                  }}
-                  className="btn btn-primary"
-                  disabled={loading}
-                >
-                  {loading ? '⏳ Processing...' : 'Confirm'}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+      <div style={{ marginTop: '12px' }}>
+        <h3>Grant / Revoke Access</h3>
+        <input
+          type="text"
+          placeholder="User Wallet Address"
+          value={targetAddress}
+          onChange={(e) => setTargetAddress(e.target.value)}
+          style={{ width: '320px' }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              grantAccess(targetAddress);
+              setTargetAddress('');
+            }
+          }}
+        />
+        <button onClick={() => { grantAccess(targetAddress); setTargetAddress(''); }} disabled={loading}>Grant</button>
+        <button onClick={() => { revokeAccess(targetAddress); setTargetAddress(''); }} disabled={loading} style={{ marginLeft: '6px' }}>Revoke</button>
       </div>
+
+      {metadata && (
+        <div>
+          <h3>File Metadata</h3>
+          <pre>{JSON.stringify(metadata, null, 2)}</pre>
+        </div>
+      )}
+
+      {accessList.length > 0 && (
+        <div>
+          <h3>Access List</h3>
+          <ul>
+            {accessList.map((entry, index) => (
+              <li key={index}>
+                {entry.recipientAddress || entry.userAddress || entry}
+                {entry.sharedAt && <span style={{ marginLeft: '8px', color: '#666' }}>since {new Date(entry.sharedAt).toLocaleString()}</span>}
+                <button onClick={() => revokeAccess(entry.recipientAddress || entry.userAddress || entry)} disabled={loading}>
+                  Revoke
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
-}
+};
 
 export default AccessControl;
